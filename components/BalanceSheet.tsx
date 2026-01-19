@@ -1,13 +1,14 @@
 
 import React, { useMemo } from 'react';
-import { Transaction, TransactionType, CreditCardDebt, CreditCard, PaymentMethod, RecurringExpense } from '../types.ts';
-import { AlertCircle, Calendar, Landmark, CreditCard as CardIcon, Clock, Repeat } from 'lucide-react';
+import { Transaction, TransactionType, CreditCardDebt, CreditCard, PaymentMethod, RecurringExpense, InitialData } from '../types.ts';
+import { AlertCircle, Landmark, CreditCard as CardIcon, Clock, Repeat, ShieldCheck, ShieldAlert } from 'lucide-react';
 
 interface BalanceSheetProps {
   transactions: Transaction[];
   cardDebts: CreditCardDebt[];
   creditCards: CreditCard[];
   recurringExpenses: RecurringExpense[];
+  initialData: InitialData;
   onPayDebt: (id: string) => void;
 }
 
@@ -16,15 +17,20 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({
   cardDebts,
   creditCards,
   recurringExpenses,
-  onPayDebt
+  initialData,
 }) => {
   const cashAssets = useMemo(() => {
-    return transactions.reduce((acc, curr) => {
+    const flow = transactions.reduce((acc, curr) => {
       if (curr.type === TransactionType.INCOME) return acc + curr.amount;
       if (curr.paymentMethod === PaymentMethod.CASH) return acc - curr.amount;
       return acc;
     }, 0);
-  }, [transactions]);
+    return initialData.startingBalance + flow;
+  }, [transactions, initialData]);
+
+  const totalFixedAssets = useMemo(() => {
+    return initialData.fixedAssets.reduce((sum, a) => sum + a.value, 0);
+  }, [initialData]);
 
   const totalCardUnpaid = useMemo(() => {
     return transactions
@@ -32,13 +38,18 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({
       .reduce((sum, t) => sum + t.amount, 0);
   }, [transactions]);
 
-  // 本週提醒：包含信用卡費與固定支出
+  const totalDebtRemaining = useMemo(() => {
+    return cardDebts.reduce((sum, d) => sum + d.remainingAmount, 0);
+  }, [cardDebts]);
+
+  // 真實淨值：(初始存款 + 累計收支 + 固定資產) - (初始債務 + 信用卡未出帳 + 分期餘額)
+  const netWorth = (cashAssets + totalFixedAssets) - (initialData.initialLiabilities + totalCardUnpaid + totalDebtRemaining);
+
   const weeklyReminders = useMemo(() => {
     const today = new Date();
     const todayDay = today.getDate();
     const reminders: any[] = [];
 
-    // 1. 信用卡提醒
     creditCards.forEach(card => {
       const cardAmt = transactions
         .filter(t => t.creditCardId === card.id && t.paymentMethod === PaymentMethod.CREDIT_CARD)
@@ -52,7 +63,6 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({
       }
     });
 
-    // 2. 固定支出提醒
     recurringExpenses.forEach(rec => {
       const isDueSoon = (rec.dayOfMonth >= todayDay && rec.dayOfMonth <= todayDay + 7) ||
                         (todayDay > 24 && rec.dayOfMonth <= (todayDay + 7) % 31);
@@ -69,30 +79,44 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-gradient-to-br from-slate-900 to-indigo-900 p-6 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden">
+        <div className="bg-gradient-to-br from-slate-900 to-indigo-900 p-6 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden break-inside-avoid">
           <div className="absolute top-0 right-0 p-8 opacity-10"><Landmark className="w-24 h-24" /></div>
           <div className="relative z-10">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest">真實可用淨資產</p>
-                <h3 className="text-3xl font-black mt-1">${(cashAssets - totalCardUnpaid).toLocaleString()}</h3>
+                <p className="text-indigo-300 text-xs font-bold uppercase tracking-widest flex items-center gap-1">
+                  真實可用淨資產 <ShieldCheck className="w-3 h-3" />
+                </p>
+                <h3 className="text-3xl font-black mt-1">${netWorth.toLocaleString()}</h3>
               </div>
               <div className="bg-white/10 p-3 rounded-2xl text-indigo-400"><Landmark className="w-6 h-6" /></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-                <p className="text-[10px] text-indigo-200 uppercase tracking-wider mb-1">目前現金/存款</p>
-                <p className="text-xl font-black text-emerald-400">${cashAssets.toLocaleString()}</p>
+            
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-sm">
+                <p className="text-[9px] text-indigo-200 uppercase tracking-wider mb-0.5">現金/儲蓄</p>
+                <p className="text-lg font-black text-emerald-400">${cashAssets.toLocaleString()}</p>
               </div>
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-                <p className="text-[10px] text-indigo-200 uppercase tracking-wider mb-1">信用卡未出帳</p>
-                <p className="text-xl font-black text-rose-400">-${totalCardUnpaid.toLocaleString()}</p>
+              <div className="bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-sm">
+                <p className="text-[9px] text-indigo-200 uppercase tracking-wider mb-0.5">固定資產</p>
+                <p className="text-lg font-black text-amber-400">${totalFixedAssets.toLocaleString()}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-sm">
+                <p className="text-[9px] text-indigo-200 uppercase tracking-wider mb-0.5">信用卡未出帳</p>
+                <p className="text-lg font-black text-rose-400">-${totalCardUnpaid.toLocaleString()}</p>
+              </div>
+              <div className="bg-white/5 p-3 rounded-2xl border border-white/10 backdrop-blur-sm relative group">
+                <p className="text-[9px] text-indigo-200 uppercase tracking-wider mb-0.5 flex items-center gap-1">既有/長期債務 <ShieldAlert className="w-2 h-2" /></p>
+                <p className="text-lg font-black text-rose-300">-${(initialData.initialLiabilities + totalDebtRemaining).toLocaleString()}</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+        <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col justify-between break-inside-avoid">
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-slate-800 font-black">
@@ -122,9 +146,9 @@ export const BalanceSheet: React.FC<BalanceSheetProps> = ({
               )}
             </div>
           </div>
-          <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100 flex gap-2">
+          <div className="mt-4 p-3 bg-amber-50 rounded-xl border border-amber-100 flex gap-2 no-print">
             <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
-            <p className="text-[9px] text-amber-700">自動追蹤：系統已包含您設定的固定支出與卡費。</p>
+            <p className="text-[9px] text-amber-700">數據包含：初始餘額、固定資產與所有已錄入負債。</p>
           </div>
         </div>
       </div>

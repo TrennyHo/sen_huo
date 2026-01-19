@@ -65,6 +65,18 @@ export interface RecurringExpense {
   creditCardId?: string;
 }
 
+export interface FixedAsset {
+  id: string;
+  name: string;
+  value: number;
+}
+
+export interface InitialData {
+  startingBalance: number;
+  initialLiabilities: number; // 新增：初始債務
+  fixedAssets: FixedAsset[];
+}
+
 export interface Payable {
   id: string;
   amount: number;

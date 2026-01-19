@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Transaction, TransactionType, Category, CreditCardDebt, BudgetItem, CreditCard, PaymentMethod, RecurringExpense } from './types.ts';
+import { Transaction, TransactionType, Category, CreditCardDebt, BudgetItem, CreditCard, PaymentMethod, RecurringExpense, InitialData, FixedAsset } from './types.ts';
 import { TransactionForm } from './components/TransactionForm.tsx';
 import { TransactionList } from './components/TransactionList.tsx';
 import { Dashboard } from './components/Dashboard.tsx';
@@ -10,13 +10,14 @@ import { CreditCardManager } from './components/CreditCardManager.tsx';
 import { CreditCardForm } from './components/CreditCardForm.tsx';
 import { BudgetPlanner } from './components/BudgetPlanner.tsx';
 import { CreditCardTable } from './components/CreditCardTable.tsx';
-import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Settings, X, Calendar, Repeat, Wallet } from 'lucide-react';
+import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Settings, X, Calendar, Repeat, Wallet, Printer, ShieldCheck, Trash2, Landmark, ShieldAlert } from 'lucide-react';
 
 const STORAGE_KEY = 'smart_ledger_data';
 const DEBTS_KEY = 'smart_ledger_debts';
 const BUDGET_KEY = 'smart_ledger_budget';
 const CARDS_KEY = 'smart_ledger_cards';
 const RECURRING_KEY = 'smart_ledger_recurring';
+const INITIAL_KEY = 'smart_ledger_initial';
 
 const safeParse = (key: string, fallback: any) => {
   try {
@@ -34,9 +35,11 @@ const App: React.FC = () => {
   const [budgetItems, setBudgetItems] = useState<BudgetItem[]>(() => safeParse(BUDGET_KEY, []));
   const [creditCards, setCreditCards] = useState<CreditCard[]>(() => safeParse(CARDS_KEY, []));
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(() => safeParse(RECURRING_KEY, []));
+  const [initialData, setInitialData] = useState<InitialData>(() => safeParse(INITIAL_KEY, { startingBalance: 0, initialLiabilities: 0, fixedAssets: [] }));
 
   const [activeTab, setActiveTab] = useState<'daily' | 'cards' | 'budget'>('daily');
   const [showCardSettings, setShowCardSettings] = useState(false);
+  const [showInitialSetup, setShowInitialSetup] = useState(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
@@ -57,6 +60,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(RECURRING_KEY, JSON.stringify(recurringExpenses));
   }, [recurringExpenses]);
+
+  useEffect(() => {
+    localStorage.setItem(INITIAL_KEY, JSON.stringify(initialData));
+  }, [initialData]);
 
   const handleAddTransaction = (newT: Omit<Transaction, 'id'>) => {
     setTransactions(prev => [{ ...newT, id: crypto.randomUUID() }, ...prev]);
@@ -120,9 +127,35 @@ const App: React.FC = () => {
     setRecurringExpenses(prev => prev.filter(item => item.id !== id));
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const updateInitialBalance = (val: number) => {
+    setInitialData(prev => ({ ...prev, startingBalance: val }));
+  };
+
+  const updateInitialLiabilities = (val: number) => {
+    setInitialData(prev => ({ ...prev, initialLiabilities: val }));
+  };
+
+  const addFixedAsset = (name: string, value: number) => {
+    setInitialData(prev => ({ 
+      ...prev, 
+      fixedAssets: [...prev.fixedAssets, { id: crypto.randomUUID(), name, value }] 
+    }));
+  };
+
+  const removeFixedAsset = (id: string) => {
+    setInitialData(prev => ({ 
+      ...prev, 
+      fixedAssets: prev.fixedAssets.filter(a => a.id !== id) 
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-10">
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-10 no-print">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="bg-indigo-600 p-2 rounded-lg shadow-md shadow-indigo-100">
@@ -141,19 +174,97 @@ const App: React.FC = () => {
           
           <div className="flex items-center gap-2">
             <button 
+              onClick={() => setShowInitialSetup(true)}
+              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-2 text-sm font-bold"
+            >
+              <Landmark className="w-5 h-5"/>
+              <span className="hidden sm:inline">資產設定</span>
+            </button>
+            <button 
               onClick={() => setShowCardSettings(!showCardSettings)} 
               className={`p-2 rounded-lg transition-all flex items-center gap-2 text-sm font-bold ${showCardSettings ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
             >
               <Settings className="w-5 h-5"/>
               <span className="hidden sm:inline">卡片管理</span>
             </button>
+            <button 
+              onClick={handlePrint}
+              className="p-2 bg-slate-900 text-white hover:bg-black rounded-lg transition-all flex items-center gap-2 text-sm font-bold shadow-lg"
+            >
+              <Printer className="w-5 h-5"/>
+              <span className="hidden sm:inline">列印報表</span>
+            </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* 初始資產設定 Modal */}
+        {showInitialSetup && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 no-print">
+            <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-8 shadow-2xl relative">
+              <button onClick={() => setShowInitialSetup(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600"><X /></button>
+              <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3 mb-6">
+                <ShieldCheck className="w-8 h-8 text-indigo-600" /> 設定財務起點
+              </h2>
+              
+              <div className="space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar pr-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">初始現金/存款</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        value={initialData.startingBalance} 
+                        onChange={(e) => updateInitialBalance(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-lg font-black text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500" 
+                      />
+                      <Wallet className="absolute right-4 top-4 text-slate-300 w-5 h-5" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">初始既有債務</label>
+                    <div className="relative">
+                      <input 
+                        type="number" 
+                        value={initialData.initialLiabilities} 
+                        onChange={(e) => updateInitialLiabilities(parseFloat(e.target.value) || 0)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-lg font-black text-rose-600 outline-none focus:ring-2 focus:ring-rose-500" 
+                      />
+                      <ShieldAlert className="absolute right-4 top-4 text-slate-300 w-5 h-5" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-100">
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-4">其他固定資產 (股票、房產、外幣)</label>
+                  <div className="space-y-3 mb-4">
+                    {initialData.fixedAssets.map(asset => (
+                      <div key={asset.id} className="flex justify-between items-center bg-indigo-50/50 p-4 rounded-xl border border-indigo-50">
+                        <span className="font-bold text-slate-700">{asset.name}</span>
+                        <div className="flex items-center gap-4">
+                          <span className="font-black text-indigo-600">${asset.value.toLocaleString()}</span>
+                          <button onClick={() => removeFixedAsset(asset.id)} className="text-slate-300 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <AssetAddForm onAdd={addFixedAsset} />
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => setShowInitialSetup(false)} 
+                className="w-full mt-8 bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-indigo-700 transition-all"
+              >
+                完成設定並儲存
+              </button>
+            </div>
+          </div>
+        )}
+
         {showCardSettings && (
-          <div className="mb-8 p-8 bg-slate-900 rounded-[2.5rem] text-white shadow-2xl animate-in zoom-in-95 duration-300 border border-indigo-500/30">
+          <div className="mb-8 p-8 bg-slate-900 rounded-[2.5rem] text-white shadow-2xl animate-in zoom-in-95 duration-300 border border-indigo-500/30 no-print">
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h2 className="text-2xl font-black flex items-center gap-3">
@@ -179,7 +290,7 @@ const App: React.FC = () => {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-4 space-y-8">
+          <div className="lg:col-span-4 space-y-8 no-print">
             {activeTab === 'daily' && <TransactionForm onAdd={handleAddTransaction} creditCards={creditCards} />}
             {activeTab === 'cards' && <CreditCardForm onAdd={handleAddCardDebt} />}
             {activeTab === 'budget' && (
@@ -197,12 +308,13 @@ const App: React.FC = () => {
             <AIAdvisor transactions={transactions} />
           </div>
 
-          <div className="lg:col-span-8 space-y-8">
+          <div className="lg:col-span-8 space-y-8 printable-content">
             <BalanceSheet 
               transactions={transactions} 
               cardDebts={cardDebts}
               creditCards={creditCards}
               recurringExpenses={recurringExpenses}
+              initialData={initialData}
               onPayDebt={handlePayCardInstallment}
             />
 
@@ -227,7 +339,7 @@ const App: React.FC = () => {
 
             {activeTab === 'cards' && (
               <div className="space-y-6">
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 flex items-center justify-between">
+                <div className="bg-white p-6 rounded-2xl border border-slate-100 flex items-center justify-between no-print">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-800">分期與貸款債務</h3>
                     <p className="text-sm text-slate-500">追蹤大額房貸、車貸或信用卡分期。</p>
@@ -240,6 +352,28 @@ const App: React.FC = () => {
           </div>
         </div>
       </main>
+    </div>
+  );
+};
+
+const AssetAddForm: React.FC<{ onAdd: (n: string, v: number) => void }> = ({ onAdd }) => {
+  const [name, setName] = useState('');
+  const [val, setVal] = useState('');
+  const handleAdd = () => { if(name && val) { onAdd(name, parseFloat(val)); setName(''); setVal(''); } };
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+      <input 
+        placeholder="資產名稱" 
+        value={name} onChange={e => setName(e.target.value)}
+        className="sm:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none" 
+      />
+      <input 
+        type="number" placeholder="目前價值" 
+        value={val} onChange={e => setVal(e.target.value)}
+        className="sm:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none" 
+      />
+      <button onClick={handleAdd} className="bg-indigo-600 text-white p-3 rounded-xl flex items-center justify-center hover:bg-indigo-700"><Plus /></button>
     </div>
   );
 };
