@@ -1,0 +1,18 @@
+
+{
+  "name": "Smart Ledger AI",
+  "short_name": "SmartLedger",
+  "description": "AI 智慧收支與債務管理工具",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2845/2845812.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
