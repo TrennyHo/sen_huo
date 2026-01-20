@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Transaction, TransactionType, Category, CreditCardDebt, BudgetItem, CreditCard, PaymentMethod, RecurringExpense, InitialData, FixedAsset } from './types.ts';
 import { TransactionForm } from './components/TransactionForm.tsx';
@@ -10,7 +9,8 @@ import { CreditCardManager } from './components/CreditCardManager.tsx';
 import { CreditCardForm } from './components/CreditCardForm.tsx';
 import { BudgetPlanner } from './components/BudgetPlanner.tsx';
 import { CreditCardTable } from './components/CreditCardTable.tsx';
-import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Settings, X, Calendar, Repeat, Wallet, Printer, ShieldCheck, Trash2, Landmark, ShieldAlert } from 'lucide-react';
+// Added TrendingUp and TrendingDown to imports from lucide-react to resolve "Cannot find name" errors on lines 609 and 610.
+import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Settings, X, Calendar, Repeat, Wallet, Printer, ShieldCheck, Trash2, Landmark, ShieldAlert, Tags, Undo2, TrendingUp, TrendingDown } from 'lucide-react';
 
 const STORAGE_KEY = 'smart_ledger_data';
 const DEBTS_KEY = 'smart_ledger_debts';
@@ -18,6 +18,11 @@ const BUDGET_KEY = 'smart_ledger_budget';
 const CARDS_KEY = 'smart_ledger_cards';
 const RECURRING_KEY = 'smart_ledger_recurring';
 const INITIAL_KEY = 'smart_ledger_initial';
+const CAT_INC_KEY = 'smart_ledger_cat_inc';
+const CAT_EXP_KEY = 'smart_ledger_cat_exp';
+
+const DEFAULT_INC_CATS = ['薪資', '投資', '獎金', '蝦皮收入', '租金收入', '其他'];
+const DEFAULT_EXP_CATS = ['餐飲', '交通', '購物', '居住', '水電費', '娛樂', '進貨成本', '工資', '醫療健康', '債務', '其他'];
 
 const safeParse = (key: string, fallback: any) => {
   try {
@@ -36,34 +41,24 @@ const App: React.FC = () => {
   const [creditCards, setCreditCards] = useState<CreditCard[]>(() => safeParse(CARDS_KEY, []));
   const [recurringExpenses, setRecurringExpenses] = useState<RecurringExpense[]>(() => safeParse(RECURRING_KEY, []));
   const [initialData, setInitialData] = useState<InitialData>(() => safeParse(INITIAL_KEY, { startingBalance: 0, initialLiabilities: 0, fixedAssets: [] }));
+  
+  // 自定義類別狀態
+  const [incomeCategories, setIncomeCategories] = useState<string[]>(() => safeParse(CAT_INC_KEY, DEFAULT_INC_CATS));
+  const [expenseCategories, setExpenseCategories] = useState<string[]>(() => safeParse(CAT_EXP_KEY, DEFAULT_EXP_CATS));
 
   const [activeTab, setActiveTab] = useState<'daily' | 'cards' | 'budget'>('daily');
   const [showCardSettings, setShowCardSettings] = useState(false);
   const [showInitialSetup, setShowInitialSetup] = useState(false);
+  const [showCategorySettings, setShowCategorySettings] = useState(false);
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-  }, [transactions]);
-
-  useEffect(() => {
-    localStorage.setItem(DEBTS_KEY, JSON.stringify(cardDebts));
-  }, [cardDebts]);
-
-  useEffect(() => {
-    localStorage.setItem(BUDGET_KEY, JSON.stringify(budgetItems));
-  }, [budgetItems]);
-
-  useEffect(() => {
-    localStorage.setItem(CARDS_KEY, JSON.stringify(creditCards));
-  }, [creditCards]);
-
-  useEffect(() => {
-    localStorage.setItem(RECURRING_KEY, JSON.stringify(recurringExpenses));
-  }, [recurringExpenses]);
-
-  useEffect(() => {
-    localStorage.setItem(INITIAL_KEY, JSON.stringify(initialData));
-  }, [initialData]);
+  useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions)); }, [transactions]);
+  useEffect(() => { localStorage.setItem(DEBTS_KEY, JSON.stringify(cardDebts)); }, [cardDebts]);
+  useEffect(() => { localStorage.setItem(BUDGET_KEY, JSON.stringify(budgetItems)); }, [budgetItems]);
+  useEffect(() => { localStorage.setItem(CARDS_KEY, JSON.stringify(creditCards)); }, [creditCards]);
+  useEffect(() => { localStorage.setItem(RECURRING_KEY, JSON.stringify(recurringExpenses)); }, [recurringExpenses]);
+  useEffect(() => { localStorage.setItem(INITIAL_KEY, JSON.stringify(initialData)); }, [initialData]);
+  useEffect(() => { localStorage.setItem(CAT_INC_KEY, JSON.stringify(incomeCategories)); }, [incomeCategories]);
+  useEffect(() => { localStorage.setItem(CAT_EXP_KEY, JSON.stringify(expenseCategories)); }, [expenseCategories]);
 
   const handleAddTransaction = (newT: Omit<Transaction, 'id'>) => {
     setTransactions(prev => [{ ...newT, id: crypto.randomUUID() }, ...prev]);
@@ -91,7 +86,7 @@ const App: React.FC = () => {
         handleAddTransaction({
           amount: debt.monthlyAmount,
           type: TransactionType.EXPENSE,
-          category: '債務' as Category,
+          category: '債務',
           note: `債務還款: ${debt.cardName} (第 ${debt.installmentCurrent + 1} 期)`,
           date: new Date().toISOString().split('T')[0],
           paymentMethod: PaymentMethod.CASH
@@ -127,17 +122,10 @@ const App: React.FC = () => {
     setRecurringExpenses(prev => prev.filter(item => item.id !== id));
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => { window.print(); };
 
-  const updateInitialBalance = (val: number) => {
-    setInitialData(prev => ({ ...prev, startingBalance: val }));
-  };
-
-  const updateInitialLiabilities = (val: number) => {
-    setInitialData(prev => ({ ...prev, initialLiabilities: val }));
-  };
+  const updateInitialBalance = (val: number) => { setInitialData(prev => ({ ...prev, startingBalance: val })); };
+  const updateInitialLiabilities = (val: number) => { setInitialData(prev => ({ ...prev, initialLiabilities: val })); };
 
   const addFixedAsset = (name: string, value: number) => {
     setInitialData(prev => ({ 
@@ -151,6 +139,29 @@ const App: React.FC = () => {
       ...prev, 
       fixedAssets: prev.fixedAssets.filter(a => a.id !== id) 
     }));
+  };
+
+  // 類別管理函數
+  const addCategory = (type: TransactionType, name: string) => {
+    if (!name.trim()) return;
+    if (type === TransactionType.INCOME) {
+      if (!incomeCategories.includes(name)) setIncomeCategories([...incomeCategories, name]);
+    } else {
+      if (!expenseCategories.includes(name)) setExpenseCategories([...expenseCategories, name]);
+    }
+  };
+
+  const removeCategory = (type: TransactionType, name: string) => {
+    if (type === TransactionType.INCOME) {
+      if (incomeCategories.length > 1) setIncomeCategories(incomeCategories.filter(c => c !== name));
+    } else {
+      if (expenseCategories.length > 1) setExpenseCategories(expenseCategories.filter(c => c !== name));
+    }
+  };
+
+  const resetCategories = () => {
+    setIncomeCategories(DEFAULT_INC_CATS);
+    setExpenseCategories(DEFAULT_EXP_CATS);
   };
 
   return (
@@ -172,33 +183,119 @@ const App: React.FC = () => {
             <button onClick={() => setActiveTab('cards')} className={`px-3 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${activeTab === 'cards' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500'}`}><CardIcon className="w-4 h-4" /> 債務</button>
           </nav>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={() => setShowCategorySettings(true)}
+              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-2 text-sm font-bold"
+              title="類別管理"
+            >
+              <Tags className="w-5 h-5"/>
+              <span className="hidden sm:inline">類別</span>
+            </button>
             <button 
               onClick={() => setShowInitialSetup(true)}
               className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all flex items-center gap-2 text-sm font-bold"
+              title="資產設定"
             >
               <Landmark className="w-5 h-5"/>
-              <span className="hidden sm:inline">資產設定</span>
+              <span className="hidden sm:inline">資產</span>
             </button>
             <button 
               onClick={() => setShowCardSettings(!showCardSettings)} 
               className={`p-2 rounded-lg transition-all flex items-center gap-2 text-sm font-bold ${showCardSettings ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50'}`}
             >
               <Settings className="w-5 h-5"/>
-              <span className="hidden sm:inline">卡片管理</span>
+              <span className="hidden sm:inline">卡片</span>
             </button>
             <button 
               onClick={handlePrint}
               className="p-2 bg-slate-900 text-white hover:bg-black rounded-lg transition-all flex items-center gap-2 text-sm font-bold shadow-lg"
             >
               <Printer className="w-5 h-5"/>
-              <span className="hidden sm:inline">列印報表</span>
+              <span className="hidden sm:inline">列印</span>
             </button>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* 類別管理 Modal */}
+        {showCategorySettings && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 no-print">
+            <div className="bg-white w-full max-w-2xl rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden">
+              <button onClick={() => setShowCategorySettings(false)} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors"><X /></button>
+              
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                    <Tags className="w-8 h-8 text-indigo-600" /> 自定義收支類別
+                  </h2>
+                  <p className="text-slate-400 text-xs font-bold mt-1">您可以隨時新增或移除自定義類別，讓 App 更貼合您的生活。</p>
+                </div>
+                <button 
+                  onClick={resetCategories}
+                  className="flex items-center gap-2 px-4 py-2 text-xs font-black text-indigo-600 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-all"
+                >
+                  <Undo2 className="w-3 h-3"/> 恢復預設
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2">
+                {/* 收入類別 */}
+                <div className="space-y-4">
+                  <div className="bg-emerald-50 px-4 py-3 rounded-2xl border border-emerald-100 flex items-center gap-3">
+                    <TrendingUpIcon className="w-5 h-5 text-emerald-600" />
+                    <span className="font-black text-emerald-800 text-sm">收入類別</span>
+                  </div>
+                  <CategoryAdder type={TransactionType.INCOME} onAdd={addCategory} />
+                  <div className="space-y-2">
+                    {incomeCategories.map(cat => (
+                      <div key={cat} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl shadow-sm group">
+                        <span className="text-sm font-bold text-slate-700">{cat}</span>
+                        <button 
+                          onClick={() => removeCategory(TransactionType.INCOME, cat)}
+                          className={`text-slate-200 hover:text-rose-500 transition-colors ${incomeCategories.length <= 1 ? 'hidden' : ''}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 支出類別 */}
+                <div className="space-y-4">
+                  <div className="bg-rose-50 px-4 py-3 rounded-2xl border border-rose-100 flex items-center gap-3">
+                    <TrendingDownIcon className="w-5 h-5 text-rose-600" />
+                    <span className="font-black text-rose-800 text-sm">支出類別</span>
+                  </div>
+                  <CategoryAdder type={TransactionType.EXPENSE} onAdd={addCategory} />
+                  <div className="space-y-2">
+                    {expenseCategories.map(cat => (
+                      <div key={cat} className="flex justify-between items-center p-3 bg-white border border-slate-100 rounded-xl shadow-sm group">
+                        <span className="text-sm font-bold text-slate-700">{cat}</span>
+                        <button 
+                          onClick={() => removeCategory(TransactionType.EXPENSE, cat)}
+                          className={`text-slate-200 hover:text-rose-500 transition-colors ${expenseCategories.length <= 1 ? 'hidden' : ''}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowCategorySettings(false)} 
+                className="w-full mt-8 bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-black transition-all"
+              >
+                儲存設定
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 初始資產設定 Modal */}
         {showInitialSetup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 no-print">
@@ -219,7 +316,7 @@ const App: React.FC = () => {
                         onChange={(e) => updateInitialBalance(parseFloat(e.target.value) || 0)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-lg font-black text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500" 
                       />
-                      <Wallet className="absolute right-4 top-4 text-slate-300 w-5 h-5" />
+                      <WalletIcon className="absolute right-4 top-4 text-slate-300 w-5 h-5" />
                     </div>
                   </div>
                   <div>
@@ -271,7 +368,7 @@ const App: React.FC = () => {
                   <CardIcon className="w-8 h-8 text-indigo-400"/> 
                   信用卡資產組合
                 </h2>
-                <p className="text-indigo-300/60 text-sm mt-1">目前已建立 {creditCards.length} 張卡片。系統將精確追蹤延後付款的資金流向。</p>
+                <p className="text-indigo-300/60 text-sm mt-1">目前已建立 {creditCards.length} 張卡片。</p>
               </div>
               <button onClick={() => setShowCardSettings(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full transition-all text-white/50 hover:text-white">
                 <X className="w-6 h-6"/>
@@ -291,7 +388,14 @@ const App: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4 space-y-8 no-print">
-            {activeTab === 'daily' && <TransactionForm onAdd={handleAddTransaction} creditCards={creditCards} />}
+            {activeTab === 'daily' && (
+              <TransactionForm 
+                onAdd={handleAddTransaction} 
+                creditCards={creditCards} 
+                incomeCategories={incomeCategories} 
+                expenseCategories={expenseCategories} 
+              />
+            )}
             {activeTab === 'cards' && <CreditCardForm onAdd={handleAddCardDebt} />}
             {activeTab === 'budget' && (
               <div className="space-y-6">
@@ -301,7 +405,11 @@ const App: React.FC = () => {
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                   <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2"><Repeat className="w-5 h-5 text-indigo-500" /> 設定固定支出 (每月)</h2>
-                  <RecurringForm onAdd={handleAddRecurring} creditCards={creditCards} />
+                  <RecurringForm 
+                    onAdd={handleAddRecurring} 
+                    creditCards={creditCards} 
+                    expenseCategories={expenseCategories}
+                  />
                 </div>
               </div>
             )}
@@ -356,50 +464,50 @@ const App: React.FC = () => {
   );
 };
 
-const AssetAddForm: React.FC<{ onAdd: (n: string, v: number) => void }> = ({ onAdd }) => {
-  const [name, setName] = useState('');
+// 內部組件
+const CategoryAdder: React.FC<{ type: TransactionType, onAdd: (t: TransactionType, n: string) => void }> = ({ type, onAdd }) => {
   const [val, setVal] = useState('');
-  const handleAdd = () => { if(name && val) { onAdd(name, parseFloat(val)); setName(''); setVal(''); } };
-
+  const handle = () => { if(val.trim()){ onAdd(type, val.trim()); setVal(''); } };
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+    <div className="flex gap-2">
       <input 
-        placeholder="資產名稱" 
-        value={name} onChange={e => setName(e.target.value)}
-        className="sm:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none" 
-      />
-      <input 
-        type="number" placeholder="目前價值" 
+        placeholder={`新增${type === TransactionType.INCOME ? '收入' : '支出'}類別...`}
         value={val} onChange={e => setVal(e.target.value)}
-        className="sm:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none" 
+        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs outline-none focus:ring-2 focus:ring-indigo-500" 
       />
-      <button onClick={handleAdd} className="bg-indigo-600 text-white p-3 rounded-xl flex items-center justify-center hover:bg-indigo-700"><Plus /></button>
+      <button onClick={handle} className="bg-indigo-600 text-white p-2.5 rounded-xl hover:bg-indigo-700 transition-all"><Plus className="w-4 h-4"/></button>
     </div>
   );
 };
 
-const RecurringForm: React.FC<{ onAdd: (item: Omit<RecurringExpense, 'id'>) => void, creditCards: CreditCard[] }> = ({ onAdd, creditCards }) => {
+const AssetAddForm: React.FC<{ onAdd: (n: string, v: number) => void }> = ({ onAdd }) => {
+  const [name, setName] = useState('');
+  const [val, setVal] = useState('');
+  const handleAdd = () => { if(name && val) { onAdd(name, parseFloat(val)); setName(''); setVal(''); } };
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-7 gap-2">
+      <input placeholder="資產名稱" value={name} onChange={e => setName(e.target.value)} className="sm:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none" />
+      <input type="number" placeholder="目前價值" value={val} onChange={e => setVal(e.target.value)} className="sm:col-span-3 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm outline-none" />
+      <button onClick={handleAdd} className="bg-indigo-600 text-white p-3 rounded-xl flex items-center justify-center hover:bg-indigo-700"><Plus className="w-4 h-4"/></button>
+    </div>
+  );
+};
+
+const RecurringForm: React.FC<{ onAdd: (item: Omit<RecurringExpense, 'id'>) => void, creditCards: CreditCard[], expenseCategories: string[] }> = ({ onAdd, creditCards, expenseCategories }) => {
   const [desc, setDesc] = useState('');
   const [amt, setAmt] = useState('');
   const [day, setDay] = useState('1');
   const [pm, setPm] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [cardId, setCardId] = useState('');
+  const [cat, setCat] = useState(expenseCategories[0]);
 
-  useEffect(() => {
-    if (creditCards.length > 0 && !cardId) setCardId(creditCards[0].id);
-  }, [creditCards]);
+  useEffect(() => { if (creditCards.length > 0 && !cardId) setCardId(creditCards[0].id); }, [creditCards]);
+  useEffect(() => { if(!expenseCategories.includes(cat)) setCat(expenseCategories[0]); }, [expenseCategories]);
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!desc || !amt) return;
-    onAdd({ 
-      description: desc, 
-      amount: parseFloat(amt), 
-      dayOfMonth: parseInt(day),
-      paymentMethod: pm,
-      creditCardId: pm === PaymentMethod.CREDIT_CARD ? cardId : undefined,
-      category: desc.includes('房') ? '居住' : desc.includes('話') ? '水電費' : '其他'
-    });
+    onAdd({ description: desc, amount: parseFloat(amt), dayOfMonth: parseInt(day), paymentMethod: pm, creditCardId: pm === PaymentMethod.CREDIT_CARD ? cardId : undefined, category: cat });
     setDesc(''); setAmt('');
   };
 
@@ -408,30 +516,28 @@ const RecurringForm: React.FC<{ onAdd: (item: Omit<RecurringExpense, 'id'>) => v
       <input value={desc} onChange={e => setDesc(e.target.value)} placeholder="項目 (如: 房租, 電信費)" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none" />
       <div className="grid grid-cols-2 gap-3">
         <input type="number" value={amt} onChange={e => setAmt(e.target.value)} placeholder="金額" className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none" />
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2">
-          <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap">每月</span>
-          <input type="number" min="1" max="31" value={day} onChange={e => setDay(e.target.value)} className="w-full bg-transparent p-2 text-sm outline-none font-bold" />
-          <span className="text-[10px] text-slate-400 font-bold">日</span>
-        </div>
+        <select value={cat} onChange={e => setCat(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none">
+          {expenseCategories.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
-      
+      <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
+        <span className="text-[10px] text-slate-400 font-bold whitespace-nowrap">每月</span>
+        <input type="number" min="1" max="31" value={day} onChange={e => setDay(e.target.value)} className="w-full bg-transparent p-2 text-sm outline-none font-bold" />
+        <span className="text-[10px] text-slate-400 font-bold">日</span>
+      </div>
       <div>
         <label className="block text-[10px] text-slate-400 font-bold uppercase mb-2">支付方式</label>
         <div className="flex bg-slate-100 p-1 rounded-lg">
-          <button type="button" onClick={() => setPm(PaymentMethod.CASH)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${pm === PaymentMethod.CASH ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}><Wallet className="w-3 h-3"/> 現金</button>
+          <button type="button" onClick={() => setPm(PaymentMethod.CASH)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${pm === PaymentMethod.CASH ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}><WalletIcon className="w-3 h-3"/> 現金</button>
           <button type="button" onClick={() => setPm(PaymentMethod.CREDIT_CARD)} disabled={creditCards.length === 0} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${pm === PaymentMethod.CREDIT_CARD ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'} ${creditCards.length === 0 ? 'opacity-50' : ''}`}><CardIcon className="w-3 h-3"/> 信用卡</button>
         </div>
       </div>
-
       {pm === PaymentMethod.CREDIT_CARD && (
         <select value={cardId} onChange={e => setCardId(e.target.value)} className="w-full bg-indigo-50 border border-indigo-100 rounded-lg p-2 text-xs font-bold text-indigo-700 outline-none">
           {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       )}
-
-      <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-md flex items-center justify-center gap-2">
-        <Plus className="w-4 h-4"/> 儲存固定支出
-      </button>
+      <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-md flex items-center justify-center gap-2"><Plus className="w-4 h-4"/> 儲存固定支出</button>
     </form>
   );
 };
@@ -444,21 +550,12 @@ const BudgetItemForm: React.FC<{ onAdd: (item: Omit<BudgetItem, 'id'>) => void, 
   const [pm, setPm] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [cardId, setCardId] = useState('');
 
-  useEffect(() => {
-    if (creditCards.length > 0 && !cardId) setCardId(creditCards[0].id);
-  }, [creditCards]);
+  useEffect(() => { if (creditCards.length > 0 && !cardId) setCardId(creditCards[0].id); }, [creditCards]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!desc || !amt || !date) return;
-    onAdd({ 
-      description: desc, 
-      amount: parseFloat(amt), 
-      type, 
-      date,
-      paymentMethod: pm,
-      creditCardId: pm === PaymentMethod.CREDIT_CARD ? cardId : undefined
-    });
+    onAdd({ description: desc, amount: parseFloat(amt), type, date, paymentMethod: pm, creditCardId: pm === PaymentMethod.CREDIT_CARD ? cardId : undefined });
     setDesc(''); setAmt('');
   };
 
@@ -472,24 +569,19 @@ const BudgetItemForm: React.FC<{ onAdd: (item: Omit<BudgetItem, 'id'>) => void, 
           <option value={TransactionType.EXPENSE}>預計支出</option>
         </select>
       </div>
-      
       {type === TransactionType.EXPENSE && (
         <div className="flex bg-slate-100 p-1 rounded-lg">
-          <button type="button" onClick={() => setPm(PaymentMethod.CASH)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${pm === PaymentMethod.CASH ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}><Wallet className="w-3 h-3"/> 現金</button>
+          <button type="button" onClick={() => setPm(PaymentMethod.CASH)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${pm === PaymentMethod.CASH ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}><WalletIcon className="w-3 h-3"/> 現金</button>
           <button type="button" onClick={() => setPm(PaymentMethod.CREDIT_CARD)} disabled={creditCards.length === 0} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all flex items-center justify-center gap-1 ${pm === PaymentMethod.CREDIT_CARD ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'} ${creditCards.length === 0 ? 'opacity-50' : ''}`}><CardIcon className="w-3 h-3"/> 信用卡</button>
         </div>
       )}
-
       {pm === PaymentMethod.CREDIT_CARD && type === TransactionType.EXPENSE && (
         <select value={cardId} onChange={e => setCardId(e.target.value)} className="w-full bg-indigo-50 border border-indigo-100 rounded-lg p-2 text-xs font-bold text-indigo-700 outline-none">
           {creditCards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       )}
-
       <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none" />
-      <button type="submit" className="w-full bg-amber-500 text-white font-bold py-2.5 rounded-xl hover:bg-amber-600 transition-all shadow-md flex items-center justify-center gap-2">
-        <Plus className="w-4 h-4"/> 加入計劃表
-      </button>
+      <button type="submit" className="w-full bg-amber-500 text-white font-bold py-2.5 rounded-xl hover:bg-amber-600 transition-all shadow-md flex items-center justify-center gap-2"><Plus className="w-4 h-4"/> 加入計劃表</button>
     </form>
   );
 };
@@ -499,24 +591,22 @@ const CardAddForm: React.FC<{ onAdd: (n: string, c: number, p: number) => void }
   const [closing, setClosing] = useState('10');
   const [payment, setPayment] = useState('25');
   const handleAdd = () => { if(name) { onAdd(name, parseInt(closing), parseInt(payment)); setName(''); } };
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
       <div className="md:col-span-2">
         <label className="block text-[10px] text-indigo-300 font-black uppercase mb-2">卡片或銀行名稱</label>
         <input value={name} onChange={e => setName(e.target.value)} placeholder="例如：台新 FlyGo" className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-sm text-white outline-none focus:ring-2 focus:ring-indigo-500" />
       </div>
-      <div>
-        <label className="block text-[10px] text-indigo-300 font-black uppercase mb-2">每月結帳日</label>
-        <input type="number" value={closing} onChange={e => setClosing(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-sm text-white" />
-      </div>
-      <div>
-        <label className="block text-[10px] text-indigo-300 font-black uppercase mb-2">每月繳款日</label>
-        <input type="number" value={payment} onChange={e => setPayment(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-sm text-white" />
-      </div>
+      <div><label className="block text-[10px] text-indigo-300 font-black uppercase mb-2">每月結帳日</label><input type="number" value={closing} onChange={e => setClosing(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-sm text-white" /></div>
+      <div><label className="block text-[10px] text-indigo-300 font-black uppercase mb-2">每月繳款日</label><input type="number" value={payment} onChange={e => setPayment(e.target.value)} className="w-full bg-white/10 border border-white/20 rounded-2xl p-4 text-sm text-white" /></div>
       <button onClick={handleAdd} className="md:col-span-4 w-full bg-indigo-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2"><Plus className="w-5 h-5"/> 將卡片加入清單</button>
     </div>
   );
 };
+
+// 內部用的替代圖示
+const WalletIcon = ({ className }: { className?: string }) => <Wallet className={className} />;
+const TrendingUpIcon = ({ className }: { className?: string }) => <TrendingUp className={className} />;
+const TrendingDownIcon = ({ className }: { className?: string }) => <TrendingDown className={className} />;
 
 export default App;

@@ -6,28 +6,27 @@ import { PlusCircle, CreditCard as CardIcon, Wallet } from 'lucide-react';
 interface TransactionFormProps {
   onAdd: (transaction: Omit<Transaction, 'id'>) => void;
   creditCards: CreditCard[];
+  incomeCategories: string[];
+  expenseCategories: string[];
 }
 
-const INCOME_CATEGORIES: Category[] = ['蝦皮收入', '租金收入', '銷售收入', '薪資', '投資', '其他'];
-const EXPENSE_CATEGORIES: Category[] = ['進貨成本', '稅務成本', '工資', '餐飲', '交通', '娛樂', '購物', '水電費', '居住', '醫療健康', '債務', '其他'];
-
-export const TransactionForm: React.FC<TransactionFormProps> = ({ onAdd, creditCards }) => {
+export const TransactionForm: React.FC<TransactionFormProps> = ({ onAdd, creditCards, incomeCategories, expenseCategories }) => {
   const [amount, setAmount] = useState('');
   const [type, setType] = useState<TransactionType>(TransactionType.EXPENSE);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
   const [creditCardId, setCreditCardId] = useState<string>('');
-  const [category, setCategory] = useState<Category>('進貨成本');
+  const [category, setCategory] = useState<Category>(expenseCategories[0]);
   const [note, setNote] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     if (type === TransactionType.INCOME) {
-      setCategory('蝦皮收入');
-      setPaymentMethod(PaymentMethod.CASH); // 收入預設為現金
+      setCategory(incomeCategories[0] || '其他');
+      setPaymentMethod(PaymentMethod.CASH);
     } else {
-      setCategory('進貨成本');
+      setCategory(expenseCategories[0] || '其他');
     }
-  }, [type]);
+  }, [type, incomeCategories, expenseCategories]);
 
   useEffect(() => {
     if (creditCards.length > 0 && !creditCardId) {
@@ -53,7 +52,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onAdd, creditC
     setNote('');
   };
 
-  const currentCategories = type === TransactionType.INCOME ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+  const currentCategories = type === TransactionType.INCOME ? incomeCategories : expenseCategories;
 
   return (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
@@ -123,17 +122,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onAdd, creditC
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="col-span-1">
-            <label className="block text-sm font-medium text-slate-600 mb-1">類別</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value as Category)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none">
-              {currentCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
-          </div>
-          <div className="col-span-1">
-            <label className="block text-sm font-medium text-slate-600 mb-1">備註</label>
-            <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註..." className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none" />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">類別</label>
+          <select value={category} onChange={(e) => setCategory(e.target.value as Category)} className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none">
+            {currentCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-slate-600 mb-1">備註</label>
+          <input type="text" value={note} onChange={(e) => setNote(e.target.value)} placeholder="備註..." className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-sm outline-none" />
         </div>
 
         <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">

@@ -9,10 +9,8 @@ export enum PaymentMethod {
   CREDIT_CARD = 'CREDIT_CARD'
 }
 
-export type Category = 
-  | '蝦皮收入' | '租金收入' | '銷售收入' | '薪資' | '投資' 
-  | '進貨成本' | '稅務成本' | '工資' | '餐飲' | '交通' | '娛樂' | '購物' | '水電費' | '居住' | '醫療健康' | '債務'
-  | '其他';
+// 改為 string 類型以支援自定義
+export type Category = string;
 
 export interface Transaction {
   id: string;
@@ -73,7 +71,7 @@ export interface FixedAsset {
 
 export interface InitialData {
   startingBalance: number;
-  initialLiabilities: number; // 新增：初始債務
+  initialLiabilities: number;
   fixedAssets: FixedAsset[];
 }
 

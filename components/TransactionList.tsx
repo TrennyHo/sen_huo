@@ -4,7 +4,7 @@ import { Transaction, TransactionType } from '../types.ts';
 import { 
   Trash2, ShoppingBag, Utensils, Bus, Play, Wallet, Heart, Zap, Home, 
   DollarSign, HelpCircle, ShieldAlert, Store, Building2, Tag, 
-  Truck, FileText, Users 
+  Truck, FileText, Users, Bookmark
 } from 'lucide-react';
 
 interface TransactionListProps {
@@ -14,28 +14,25 @@ interface TransactionListProps {
 
 const CategoryIcon = ({ category }: { category: string }) => {
   const props = { className: "w-4 h-4" };
+  // 匹配已知關鍵字，若不符合則使用 Bookmark 作為通用圖示
   switch (category) {
-    // 收入類
-    case '蝦皮收入': return <Store {...props} />;
-    case '租金收入': return <Building2 {...props} />;
-    case '銷售收入': return <Tag {...props} />;
-    case '薪資': return <DollarSign {...props} />;
-    case '投資': return <Wallet {...props} />;
-    
-    // 支出類
+    case '蝦皮收入': case '網拍': return <Store {...props} />;
+    case '租金收入': case '租金': return <Building2 {...props} />;
+    case '銷售收入': case '銷售': return <Tag {...props} />;
+    case '薪資': case '薪水': return <DollarSign {...props} />;
+    case '投資': case '股票': return <Wallet {...props} />;
     case '進貨成本': return <Truck {...props} />;
     case '稅務成本': return <FileText {...props} />;
     case '工資': return <Users {...props} />;
-    case '餐飲': return <Utensils {...props} />;
-    case '交通': return <Bus {...props} />;
-    case '娛樂': return <Play {...props} />;
-    case '購物': return <ShoppingBag {...props} />;
-    case '水電費': return <Zap {...props} />;
-    case '居住': return <Home {...props} />;
-    case '醫療健康': return <Heart {...props} />;
-    case '債務': return <ShieldAlert {...props} />;
-    
-    default: return <HelpCircle {...props} />;
+    case '餐飲': case '吃飯': return <Utensils {...props} />;
+    case '交通': case '油錢': return <Bus {...props} />;
+    case '娛樂': case '玩樂': return <Play {...props} />;
+    case '購物': case '買東西': return <ShoppingBag {...props} />;
+    case '水電費': case '電費': case '水費': return <Zap {...props} />;
+    case '居住': case '房租': return <Home {...props} />;
+    case '醫療健康': case '看病': return <Heart {...props} />;
+    case '債務': case '還款': return <ShieldAlert {...props} />;
+    default: return <Bookmark {...props} />;
   }
 };
 
