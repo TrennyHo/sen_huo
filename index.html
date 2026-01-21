@@ -21,9 +21,11 @@
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc;
         -webkit-tap-highlight-color: transparent;
+        overflow-x: hidden;
       }
       .custom-scrollbar::-webkit-scrollbar {
         width: 4px;
+        height: 4px;
       }
       .custom-scrollbar::-webkit-scrollbar-track {
         background: transparent;
@@ -33,39 +35,92 @@
         border-radius: 10px;
       }
 
-      /* 列印專用樣式 */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+
+      /* 列印增強樣式 */
       @media print {
-        header, nav, button, .no-print, aside, select {
+        /* 隱藏導航與操作按鈕 */
+        header, nav, button, .no-print, aside, select, footer {
           display: none !important;
         }
+
+        /* 重置佈局 */
         body {
           background-color: white !important;
+          color: black !important;
           padding: 0 !important;
           margin: 0 !important;
         }
-        main {
-          max-width: 100% !important;
+
+        #root {
           padding: 0 !important;
         }
-        .lg\:col-span-4, .lg\:col-span-8, .lg\:col-span-12 {
-          width: 100% !important;
+
+        main {
+          max-width: 100% !important;
+          padding: 0.5in !important; /* 標準邊距 */
+          margin: 0 !important;
           display: block !important;
         }
+
+        /* 強制展開網格，讓列印時報表排成一行 */
         .grid {
           display: block !important;
+          width: 100% !important;
         }
-        .card, .bg-white, .rounded-2xl {
-          border: 1px solid #eee !important;
-          box-shadow: none !important;
+
+        .lg\:col-span-8, .lg\:col-span-12, .lg\:col-span-4 {
+          width: 100% !important;
           margin-bottom: 20px !important;
-          break-inside: avoid;
         }
-        h1, h2, h3, h4 {
+
+        /* 報表卡片優化 */
+        .bg-white, .rounded-2xl, .rounded-3xl, .rounded-\[2\.5rem\] {
+          border: 1px solid #e2e8f0 !important;
+          box-shadow: none !important;
+          background-color: white !important;
+          border-radius: 12px !important;
+          margin-bottom: 20px !important;
+          padding: 15px !important;
+          page-break-inside: avoid; /* 防止在卡片中斷開 */
+        }
+
+        /* 字體與顏色 */
+        h1, h2, h3, h4, p, span {
           color: black !important;
         }
+
+        .text-indigo-600, .text-emerald-600, .text-rose-600 {
+          color: black !important;
+          font-weight: bold !important;
+          text-decoration: underline !important;
+        }
+
+        /* 圖表處理：大多數瀏覽器列印 Canvas 會有問題，建議主要保留數據列表 */
         .recharts-responsive-container {
+          max-height: 250px !important;
+        }
+
+        /* 確保表格內容完整顯示 */
+        .overflow-x-auto {
+          overflow: visible !important;
+        }
+        
+        table {
           width: 100% !important;
-          height: 300px !important;
+          border-collapse: collapse !important;
+        }
+        
+        th, td {
+          border-bottom: 1px solid #eee !important;
+          padding: 8px !important;
+          font-size: 10pt !important;
         }
       }
     </style>
