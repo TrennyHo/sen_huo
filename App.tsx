@@ -11,7 +11,22 @@ import { CreditCardForm } from './components/CreditCardForm.tsx';
 import { BudgetPlanner } from './components/BudgetPlanner.tsx';
 import { CreditCardTable } from './components/CreditCardTable.tsx';
 import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Settings, X, Calendar, Repeat, Wallet, Printer, ShieldCheck, Trash2, Landmark, ShieldAlert, Tags, Undo2, TrendingUp, TrendingDown } from 'lucide-react';
+// 加上這幾行
+import { initializeApp } from "firebase/app";
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
+import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy } from "firebase/firestore";
 
+// Firebase 配置（使用您之前在 Vercel 設定好的變數）
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
 const STORAGE_KEY = 'smart_ledger_data';
 const DEBTS_KEY = 'smart_ledger_debts';
 const BUDGET_KEY = 'smart_ledger_budget';
@@ -49,6 +64,25 @@ const App: React.FC = () => {
   const [showCardSettings, setShowCardSettings] = useState(false);
   const [showInitialSetup, setShowInitialSetup] = useState(false);
   const [showCategorySettings, setShowCategorySettings] = useState(false);
+  const [user, setUser] = useState<any>(null); // 管理登入狀態
+
+useEffect(() => {
+  // 監聽登入狀態
+  return onAuthStateChanged(auth, (currentUser) => {
+    setUser(currentUser);
+    if (currentUser) {
+      // 🚀 核心升級：當總裁登入時，改從 Firebase 抓取屬於您的專屬數據
+      const q = query(collection(db, "transactions"), where("ownerId", "==", currentUser.uid));
+      onSnapshot(q, (snapshot) => {
+        const cloudData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Transaction[];
+        if (cloudData.length > 0) setTransactions(cloudData);
+      });
+      // 同理可設定 cardDebts, budgetItems 的雲端同步...
+    }
+  });
+}, []);
+
+const handleLogin = () => signInWithPopup(auth, provider);
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(DEBTS_KEY, JSON.stringify(cardDebts)); }, [cardDebts]);
@@ -59,9 +93,25 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem(CAT_INC_KEY, JSON.stringify(incomeCategories)); }, [incomeCategories]);
   useEffect(() => { localStorage.setItem(CAT_EXP_KEY, JSON.stringify(expenseCategories)); }, [expenseCategories]);
 
-  const handleAddTransaction = (newT: Omit<Transaction, 'id'>) => {
-    setTransactions(prev => [{ ...newT, id: crypto.randomUUID() }, ...prev]);
+
+const handleAddTransaction = async (newT: Omit<Transaction, 'id'>) => {
+  if (!user) return; 
+
+  // 1. 準備包含總裁身份標籤的資料
+  const transactionData = { 
+    ...newT, 
+    ownerId: user.uid, // 這是方案二的核心：身分標籤
+    createdAt: new Date().toISOString() // 加上時間戳，方便 AI 做月成長率計算
   };
+
+  try {
+    // 2. 直接推送到雲端（Firebase 會自動產生唯一 ID）
+    await addDoc(collection(db, "transactions"), transactionData);
+    // 3. 本地介面會透過 useEffect 裡的 onSnapshot 自動更新，不用手動 setTransactions
+  } catch (e) {
+    console.error("雲端存取失敗：", e);
+  }
+};
 
   const handleDeleteTransaction = (id: string) => {
     setTransactions(prev => prev.filter(t => t.id !== id));
@@ -162,6 +212,22 @@ const App: React.FC = () => {
     setExpenseCategories(DEFAULT_EXP_CATS);
   };
 
+  if (!user) {
+  return (
+    <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+      <div className="bg-white p-8 rounded-3xl shadow-2xl text-center max-w-sm w-full">
+        <div className="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <Wallet2 className="w-8 h-8 text-white" />
+        </div>
+        <h1 className="text-2xl font-black text-slate-800 mb-2">森活科技</h1>
+        <p className="text-slate-500 mb-8 font-medium">請登入以存取您的私人帳簿</p>
+        <button onClick={handleLogin} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-2xl transition-all shadow-md flex items-center justify-center gap-2">
+           使用 Google 帳號登入
+        </button>
+      </div>
+    </div>
+  );
+}
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50 no-print">
