@@ -95,21 +95,28 @@ const handleLogin = () => signInWithPopup(auth, provider);
 
 
 const handleAddTransaction = async (newT: Omit<Transaction, 'id'>) => {
-  if (!user) return; 
+  if (!user) return;
 
-  // 1. 準備包含總裁身份標籤的資料
-  const transactionData = { 
-    ...newT, 
-    ownerId: user.uid, // 這是方案二的核心：身分標籤
-    createdAt: new Date().toISOString() // 加上時間戳，方便 AI 做月成長率計算
+  // 1. 強制格式轉換，確保所有數據都是「Firebase 喜歡的樣子」
+  const safeData = {
+    amount: Number(newT.amount) || 0, // 確保金額一定是數字
+    type: String(newT.type),
+    category: String(newT.category),
+    note: String(newT.note || ""),   // 確保備註不會是 undefined
+    date: String(newT.date),         // 確保日期是字串
+    paymentMethod: String(newT.paymentMethod),
+    creditCardId: newT.creditCardId ? String(newT.creditCardId) : null,
+    ownerId: user.uid,
+    createdAt: new Date().toISOString()
   };
 
   try {
-    // 2. 直接推送到雲端（Firebase 會自動產生唯一 ID）
-    await addDoc(collection(db, "transactions"), transactionData);
-    // 3. 本地介面會透過 useEffect 裡的 onSnapshot 自動更新，不用手動 setTransactions
+    // 2. 寫入雲端
+    const docRef = await addDoc(collection(db, "transactions"), safeData);
+    console.log("數據成功存入保險箱，ID 為：", docRef.id);
   } catch (e) {
-    console.error("雲端存取失敗：", e);
+    console.error("這筆數據被保險箱拒絕了：", e);
+    alert("數據格式可能有誤，請檢查金額與日期！");
   }
 };
 
