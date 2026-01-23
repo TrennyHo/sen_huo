@@ -1,5 +1,5 @@
 // 1. Firebase 核心引入 (靈魂)
-import { auth, db, googleProvider } from './firebase'; 
+import { auth, db, googleProvider } from './services/firebase';
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth"; 
 import { collection, addDoc, query, where, onSnapshot, orderBy } from "firebase/firestore";
 
