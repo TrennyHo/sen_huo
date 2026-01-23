@@ -13,8 +13,7 @@
     "react-dom": "^18.2.0",
     "lucide-react": "^0.344.0",
     "firebase": "^11.2.0",
-    "recharts": "^2.10.3",
-    "@google/generative-ai": "^0.21.0"
+    "recharts": "^2.10.3"
   },
   
   "devDependencies": {
