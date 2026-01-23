@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Transaction } from "../types.ts";
 
 /**
@@ -10,7 +10,7 @@ export const getFinancialInsights = async (transactions: Transaction[]): Promise
   if (transactions.length === 0) return "加入一些交易記錄來獲得 AI 理財建議！";
 
   // Always create a new instance right before making an API call to ensure it uses the most up-to-date API key.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenerativeAI({ apiKey: process.env.API_KEY });
 
   const summaryData = transactions.map(t => ({
     type: t.type,
