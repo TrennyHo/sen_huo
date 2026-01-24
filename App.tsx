@@ -66,33 +66,41 @@ const App: React.FC = () => {
   const [showCategorySettings, setShowCategorySettings] = useState(false);
   const [user, setUser] = useState<any>(null); // 管理登入狀態
 
-  useEffect(() => {
-  // 1. 這是手機端最重要的「接球手」
+useEffect(() => {
+  // 檢查 auth 是否存在，防止全白崩潰
+  if (!auth) return;
+
+  // A. 處理手機端跳轉回來的結果
   getRedirectResult(auth)
     .then((result) => {
       if (result) {
-        // 成功登入，result.user 裡面就是您的資料
+        console.log("驗證成功回傳！");
         setUser(result.user);
-        console.log("從 Google 跳轉回來了，歡迎總裁！");
       }
     })
     .catch((error) => {
-      console.error("跳轉回傳出錯：", error);
-      // 如果看到 auth/unauthorized-domain，請檢查 Firebase 授權網域
-      alert("驗證回傳錯誤：" + error.message);
+      console.error("跳轉處理出錯：", error.code);
+      // 如果看到 unauthorized-domain，請至 Firebase 新增授權網域
+      if (error.code === 'auth/unauthorized-domain') {
+        alert("請將此網址加入 Firebase 授權網域！");
+      }
     });
 
-  // 2. 原本的監聽邏輯
+  // B. 監聽登入狀態改變
   const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
     setUser(currentUser);
     if (currentUser) {
-      // 這裡處理資料庫抓取邏輯...
+      // 這裡維持您原本的 Firebase 抓取數據邏輯
+      const q = query(collection(db, "transactions"), where("ownerId", "==", currentUser.uid));
+      onSnapshot(q, (snapshot) => {
+        const cloudData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Transaction[];
+        if (cloudData.length > 0) setTransactions(cloudData);
+      });
     }
   });
 
   return () => unsubscribe();
 }, []);
-
 
 const handleLogin = async () => {
   try {
