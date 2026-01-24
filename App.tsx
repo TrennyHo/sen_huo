@@ -13,7 +13,7 @@ import { CreditCardTable } from './components/CreditCardTable.tsx';
 import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Settings, X, Calendar, Repeat, Wallet, Printer, ShieldCheck, Trash2, Landmark, ShieldAlert, Tags, Undo2, TrendingUp, TrendingDown } from 'lucide-react';
 // 加上這幾行
 import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
+import { getAuth, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy } from "firebase/firestore";
 
 // Firebase 配置（使用您之前在 Vercel 設定好的變數）
@@ -24,7 +24,7 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+const auth = getAuth();
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 const STORAGE_KEY = 'smart_ledger_data';
@@ -82,7 +82,9 @@ useEffect(() => {
   });
 }, []);
 
-const handleLogin = () => signInWithPopup(auth, provider);
+const handleLogin = () => {
+  signInWithRedirect(auth, provider);
+};
 
   useEffect(() => { localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions)); }, [transactions]);
   useEffect(() => { localStorage.setItem(DEBTS_KEY, JSON.stringify(cardDebts)); }, [cardDebts]);
