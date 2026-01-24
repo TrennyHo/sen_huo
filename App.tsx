@@ -113,13 +113,11 @@ useEffect(() => {
 
 const handleLogin = async () => {
   try {
-    // 1. 強制持久化，防止手機 Safari 失憶
     await setPersistence(auth, browserLocalPersistence);
-    // 2. 加入第三個參數 resolver，徹底治好 iPhone 的重複跳轉循環
+    // ✅ 加上第三個參數 browserPopupRedirectResolver
     await signInWithRedirect(auth, provider, browserPopupRedirectResolver); 
   } catch (error: any) {
-    console.error("登入失敗：", error);
-    alert("手機登入失敗：" + error.message);
+    alert("手機登入啟動失敗：" + error.message);
   }
 };
 
