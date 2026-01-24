@@ -66,22 +66,33 @@ const App: React.FC = () => {
   const [showCategorySettings, setShowCategorySettings] = useState(false);
   const [user, setUser] = useState<any>(null); // 管理登入狀態
 
-useEffect(() => {
-  // 這裡的 onAuthStateChanged 現在有正確導入了！
+  useEffect(() => {
+  // 1. 這是手機端最重要的「接球手」
+  getRedirectResult(auth)
+    .then((result) => {
+      if (result) {
+        // 成功登入，result.user 裡面就是您的資料
+        setUser(result.user);
+        console.log("從 Google 跳轉回來了，歡迎總裁！");
+      }
+    })
+    .catch((error) => {
+      console.error("跳轉回傳出錯：", error);
+      // 如果看到 auth/unauthorized-domain，請檢查 Firebase 授權網域
+      alert("驗證回傳錯誤：" + error.message);
+    });
+
+  // 2. 原本的監聽邏輯
   const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
     setUser(currentUser);
     if (currentUser) {
-      console.log("總裁好！身分驗證成功:", currentUser.uid);
-      // 🚀 執行雲端數據抓取邏輯...
-      const q = query(collection(db, "transactions"), where("ownerId", "==", currentUser.uid));
-      onSnapshot(q, (snapshot) => {
-        const cloudData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Transaction[];
-        if (cloudData.length > 0) setTransactions(cloudData);
-      });
+      // 這裡處理資料庫抓取邏輯...
     }
   });
-  return () => unsubscribe(); // 卸載時取消監聽
+
+  return () => unsubscribe();
 }, []);
+
 
 const handleLogin = async () => {
   try {
