@@ -18,3 +18,5 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+// 額外匯出這個方法，方便之後霸道調用
+export { signInWithRedirect };
