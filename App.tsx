@@ -13,8 +13,9 @@ import { CreditCardTable } from './components/CreditCardTable.tsx';
 import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Settings, X, Calendar, Repeat, Wallet, Printer, ShieldCheck, Trash2, Landmark, ShieldAlert, Tags, Undo2, TrendingUp, TrendingDown } from 'lucide-react';
 // 加上這幾行
 import { initializeApp } from "firebase/app";
-//import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, getRedirectResult, setPersistence, browserLocalPersistence } from "firebase/auth";
+
+import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, setPersistence, browserLocalPersistence, browserPopupRedirectResolver } from "firebase/auth";
+//import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, getRedirectResult, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy } from "firebase/firestore";
 
 // Firebase 配置（使用您之前在 Vercel 設定好的變數）
@@ -106,8 +107,9 @@ useEffect(() => {
 const handleLogin = async () => {
   try {
     await setPersistence(auth, browserLocalPersistence);
-    await signInWithRedirect(auth, provider);
-  } catch (error) {
+    // ✅ 加入第三個參數，這專門治 iPhone 的不服！
+    await signInWithRedirect(auth, provider, browserPopupRedirectResolver); 
+  } catch (error: any) {
     alert("手機登入失敗：" + error.message);
   }
 };
