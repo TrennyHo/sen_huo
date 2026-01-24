@@ -13,7 +13,8 @@ import { CreditCardTable } from './components/CreditCardTable.tsx';
 import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Settings, X, Calendar, Repeat, Wallet, Printer, ShieldCheck, Trash2, Landmark, ShieldAlert, Tags, Undo2, TrendingUp, TrendingDown } from 'lucide-react';
 // 加上這幾行
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithRedirect, GoogleAuthProvider } from "firebase/auth";
+import { getAuth, signInWithRedirect, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
+
 import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy } from "firebase/firestore";
 
 // Firebase 配置（使用您之前在 Vercel 設定好的變數）
@@ -67,19 +68,20 @@ const App: React.FC = () => {
   const [user, setUser] = useState<any>(null); // 管理登入狀態
 
 useEffect(() => {
-  // 監聽登入狀態
-  return onAuthStateChanged(auth, (currentUser) => {
+  // 這裡的 onAuthStateChanged 現在有正確導入了！
+  const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
     setUser(currentUser);
     if (currentUser) {
-      // 🚀 核心升級：當總裁登入時，改從 Firebase 抓取屬於您的專屬數據
+      console.log("總裁好！身分驗證成功:", currentUser.uid);
+      // 🚀 執行雲端數據抓取邏輯...
       const q = query(collection(db, "transactions"), where("ownerId", "==", currentUser.uid));
       onSnapshot(q, (snapshot) => {
         const cloudData = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Transaction[];
         if (cloudData.length > 0) setTransactions(cloudData);
       });
-      // 同理可設定 cardDebts, budgetItems 的雲端同步...
     }
   });
+  return () => unsubscribe(); // 卸載時取消監聽
 }, []);
 
 const handleLogin = () => {
