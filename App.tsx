@@ -130,11 +130,9 @@ const handleLogin = async () => {
     }
   } catch (error: any) {
     console.error("登入出錯：", error);
-    // 如果 Safari 攔截了彈窗，會噴出這個錯誤
-    if (error.code === 'auth/popup-blocked') {
-      alert("總裁，請在 Safari 設定中「允許彈出視窗」，或在點擊後選擇「允許」！");
-    } else {
-      alert("登入失敗：" + error.message);
+    // 只有在「非」彈窗被攔截的情況下，才跳出警示，避免干擾總裁操作
+    if (error.code !== 'auth/popup-blocked') {
+      alert("登入失敗，請檢查網路或稍後再試！");
     }
   }
 };
