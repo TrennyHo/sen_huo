@@ -15,6 +15,7 @@ import { Wallet2, BarChart3, CreditCard as CardIcon, PieChart, Target, Plus, Set
 import { initializeApp } from "firebase/app";
 import { 
   getAuth, 
+  signInWithPopup,
   signInWithRedirect, 
   GoogleAuthProvider, 
   onAuthStateChanged, 
@@ -113,11 +114,28 @@ useEffect(() => {
 
 const handleLogin = async () => {
   try {
+    // 1. 先確保狀態持久化
     await setPersistence(auth, browserLocalPersistence);
-    // ✅ 加上第三個參數 browserPopupRedirectResolver
-    await signInWithRedirect(auth, provider, browserPopupRedirectResolver); 
+    
+    // 2. 偵測環境：如果是 iPhone/iPad，改用彈窗
+    const isMobile = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    
+    if (isMobile) {
+      // 📱 手機端：改用 Popup。
+      // 點擊後 Safari 會問「是否允許彈出視窗」，請總裁霸氣點選「允許」！
+      await signInWithPopup(auth, provider);
+    } else {
+      // 💻 電腦端：維持原本穩定的 Redirect
+      await signInWithRedirect(auth, provider, browserPopupRedirectResolver);
+    }
   } catch (error: any) {
-    alert("手機登入啟動失敗：" + error.message);
+    console.error("登入出錯：", error);
+    // 如果 Safari 攔截了彈窗，會噴出這個錯誤
+    if (error.code === 'auth/popup-blocked') {
+      alert("總裁，請在 Safari 設定中「允許彈出視窗」，或在點擊後選擇「允許」！");
+    } else {
+      alert("登入失敗：" + error.message);
+    }
   }
 };
 
